@@ -45,7 +45,8 @@ public class UserConfig {
                         .requestMatchers("/getUsers/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults())
+               // .httpBasic(Customizer.withDefaults()) // this will enable the form login
+                .oauth2Login(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Allow H2 UI frames
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
