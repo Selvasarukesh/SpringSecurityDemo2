@@ -16,7 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -24,40 +23,53 @@ import java.util.List;
 @EnableWebSecurity
 public class UserConfig {
 
-   @Autowired
-   MyUserDetailService userDetailsService;
+    @Autowired
+    private MyUserDetailService userDetailsService;
 
-   @Autowired
-    jwtFilter jwtFilter;
-
+    @Autowired
+    private jwtFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/addUser/**").permitAll()// Allow H2 console access
-                        .requestMatchers("/greet/**").permitAll()
-                        .requestMatchers("/login/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        // Public endpoints (no login, no jwt)
+                        .requestMatchers(
+                                "/h2-console/**",
+                                "/addUser/**",
+                                "/greet/**",
+                                "/login/**",
+                                "/oauth2/authorization/**",
+                                "/login/oauth2/code/**",
+
+                                // Swagger/OpenAPI
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
+
+                        // Protected endpoints
                         .requestMatchers("/getUsers/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-               // .httpBasic(Customizer.withDefaults()) // this will enable the form login
+                // enable OAuth2 login only for protected endpoints
                 .oauth2Login(Customizer.withDefaults())
+                // stateless session (for JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Allow H2 UI frames
+                // allow frames for H2 console
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+                // register our JWT filter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-
     @Bean
     public AuthenticationProvider authProvider() {
-        DaoAuthenticationProvider provider=new DaoAuthenticationProvider();
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(new BCryptPasswordEncoder(9));
         return provider;
@@ -67,5 +79,4 @@ public class UserConfig {
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(List.of(authProvider()));
     }
-
 }
